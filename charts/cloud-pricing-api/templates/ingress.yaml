@@ -2,10 +2,10 @@
 {{- $fullName := include "cloud-pricing-api.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- $extraPaths := .Values.ingress.extraPaths -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
+{{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
 {{- else -}}
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
@@ -17,6 +17,9 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{ end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -38,8 +41,15 @@ spec:
           {{- range .paths }}
           - path: {{ .path }}
             backend:
+              service:
+              {{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion -}}
+                name: {{ $fullName }}
+                port: 
+                  number: {{ $svcPort }}
+              {{ else }}
               serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
+              {{ end }}
           {{- end }}
     {{- end }}
   {{- end }}
